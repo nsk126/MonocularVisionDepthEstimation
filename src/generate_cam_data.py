@@ -13,8 +13,9 @@ class DataLoader:
             raise Exception('No file name given')
         else:
             self.file_name = file_name
-            self.imu_dict = None
-            self.frame_metadata_dict = None
+            self.dict_imu = None
+            self.dict_frame_metadata = None
+            self.dict_templates_live = None
             try:
                 self.start_time = os.path.getctime(f'data/{self.file_name}.mp4')
             except ImportError:
@@ -33,10 +34,14 @@ class DataLoader:
             if not ret:
                 break
 
+            # convert RGB img to Grayscale
             if ret:
                 gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             else:
                 break
+
+            # Resize the frame to 848 x 480 px
+            gray_frame = cv2.resize(gray_frame, (848, 480))
 
             frame_array = np.array(gray_frame)
 
@@ -61,7 +66,7 @@ class DataLoader:
         cv2.destroyAllWindows()
 
         meta_data = np.array(meta_data)
-        self.frame_metadata_dict = {
+        self.dict_frame_metadata = {
             'ts': meta_data
         }
 
@@ -74,8 +79,8 @@ class DataLoader:
         gyro_data = data[:, :-1]
 
         # create a new column with timeseries of imu data
-        time_series_accel = np.linspace(self.start_time, self.frame_metadata_dict['ts'][-1], len(accel_data))
-        time_series_gyro = np.linspace(self.start_time, self.frame_metadata_dict['ts'][-1], len(gyro_data))
+        time_series_accel = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(accel_data))
+        time_series_gyro = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(gyro_data))
 
         accel_data = np.hstack((time_series_accel.reshape(-1, 1), accel_data))
         gyro_data = np.hstack((time_series_gyro.reshape(-1, 1), gyro_data))
@@ -84,16 +89,31 @@ class DataLoader:
             'accel': accel_data, 'gyro': gyro_data
         }
 
-        self.imu_dict = imu_data
+        self.dict_imu = imu_data
+
+    def create_patches(self):
+        start_time = self.start_time + 2.0
+        end_time = self.start_time + 10000.0
+        patch_cords = (349, 165, 499, 315)  # TODO: make dynamic
+
+        patches = (start_time, end_time, patch_cords)
+
+        dict_templates_live = {
+            'patches': [patches]
+        }
+
+        self.dict_templates_live = dict_templates_live
 
     def dump_pickles(self):
-        pickle.dump(self.imu_dict, open("data/record/imu.pickle", "wb"))
-        pickle.dump(self.frame_metadata_dict, open("data/record/frame_metadata.pickle", "wb"))
+        pickle.dump(self.dict_imu, open("data/record/imu.pickle", "wb"))
+        pickle.dump(self.dict_frame_metadata, open("data/record/frame_metadata.pickle", "wb"))
+        pickle.dump(self.dict_templates_live, open("data/record/templates_live.pickle", "wb"))
 
-    # input -> output : file_name -> imu, frame_metadata, npy dump
+    # input -> output : file_name -> imu, frame_metadata, templates_live, npy dump
     def dump_files(self):
         self.load_mp4_and_dump_npy()
         self.load_csv_files()  # load fixed imu data
+        self.create_patches()  # create a patch
         self.dump_pickles()
 
 
