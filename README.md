@@ -8,4 +8,8 @@ A Project that primarily uses mono vision cameras and auxiliary sensors to estim
 4. ```commandline
    python.exe .\src\generate_cam_data.py -f VID_20230321_161057
    ```
-5.
+
+## Program to plot results in pickle files
+_Note: Files need to be in `data/record` for this to work_.
+
+`python.exe .\src\plot_data.py -ap` will read accel data and print it. The program has the flags `-a`, `-g` and `-p` for accel, gyro and print each.
