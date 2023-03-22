@@ -1,0 +1,5 @@
+img/*
+*.npy
+*.mp4
+*.csv
+*.pickle
