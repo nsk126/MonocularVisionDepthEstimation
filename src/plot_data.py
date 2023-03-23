@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # arguments
     parser.add_argument('-a', '--accel', dest='accel', action='store_true', help='plot accelerometer data')
     parser.add_argument('-g', '--gyro', dest='gyro', action='store_true', help='plot gyroscope data')
-    parser.add_argument('-p', '--print', dest='print', action='store_true', help='plot gyroscope data')
+    parser.add_argument('-p', '--print', dest='print', action='store_true', help='print data')
 
     # parsing with error cases
     try:

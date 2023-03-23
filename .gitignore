@@ -3,3 +3,6 @@ img/*
 *.mp4
 *.csv
 *.pickle
+*.jpg
+*.png
+*.pkl
