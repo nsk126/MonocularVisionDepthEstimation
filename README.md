@@ -8,6 +8,7 @@ in the project directory run:
 ```commandline
 python -m venv .venv
 .venv/Scripts/activate
+pip install -r requirements.txt
 ```
 `.venv/Scripts/activate` works in windows CMD, may require 
 special settings to run on PowerShell. For Linux, 
