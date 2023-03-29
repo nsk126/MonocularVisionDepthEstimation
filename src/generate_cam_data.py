@@ -4,11 +4,12 @@ import numpy as np
 import argparse
 import cv2
 import pickle
+import glob
 
 
 # idea: generate all data in CSV and pickle format using just .mp4 and .csv data from OpenCamera Android app.
 class DataLoader:
-    def __init__(self, file_name, s_img=False):
+    def __init__(self, file_name, s_img=False, print_pkl=False):
         if file_name is None:
             raise Exception('No file name given')
         else:
@@ -18,11 +19,27 @@ class DataLoader:
             self.dict_templates_live = None
             self.dict_intrinsics = None
             self.s_img = s_img
+            self.print_pkl = print_pkl
+            self.img_data_path = 'data/record/images'
 
             try:
                 self.start_time = os.path.getctime(f'data/{self.file_name}.mp4')
+                # self.start_time = 1679040345.0
             except ImportError:
                 raise Exception('No creation time found.')
+
+    def reset_img_data(self):
+
+        # TODO: need to delete all files in the dir prior
+        files = os.listdir(self.img_data_path)
+        for file in files:
+            file_path = os.path.join(self.img_data_path, file)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    # print(f"Deleted {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
 
     def load_mp4_and_dump_npy(self):
         # import mp4 file
@@ -31,6 +48,8 @@ class DataLoader:
 
         nframe = 0
         meta_data = []
+
+        self.reset_img_data()  # Clears all npy images in the data/record/images dir
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -46,14 +65,12 @@ class DataLoader:
             # Resize the frame to 848 x 480 px
             gray_frame = cv2.resize(gray_frame, (848, 480))
 
-            frame_array = np.array(gray_frame)
-
-            # TODO: need to delete all files in the dir prior
-
-            np.save(open(f'data/record/images/frame_{nframe:06d}.npy', 'wb'), frame_array)
-
             if self.s_img is True:
                 cv2.imshow('frame', gray_frame)
+
+            frame_array = np.array(gray_frame)
+
+            np.save(open(f'data/record/images/frame_{nframe:06d}.npy', 'wb'), frame_array)
 
             nframe += 1
 
@@ -65,7 +82,7 @@ class DataLoader:
             meta_data.append(timestamp)
 
             # Wait for the user to press 'q' to exit
-            if cv2.waitKey(0) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
         print(f'Total frames = {nframe}')
@@ -80,8 +97,8 @@ class DataLoader:
     def load_csv_files(self):
 
         # permutation matrix
-
-        perm = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
+        perm = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]])
+        # perm1 = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]])
 
         # TODO: align axis of realsense imu and s23 camera imu - find axis x,y,z format of each
         data = np.genfromtxt(f'data/{self.file_name}accel.csv', delimiter=',')
@@ -91,10 +108,13 @@ class DataLoader:
         accel_data = np.matmul(accel_data, perm)
 
         data = np.genfromtxt(f'data/{self.file_name}gyro.csv', delimiter=',')
+        # print(data)
         gyro_data = data[:, :-1]
+        # print(gyro_data)
 
         # transform Open camera to Realsense axis
         gyro_data = np.matmul(gyro_data, perm)
+        # print(gyro_data)
 
         # create a new column with timeseries of imu data
         time_series_accel = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(accel_data))
@@ -153,6 +173,19 @@ class DataLoader:
         pickle.dump(self.dict_templates_live, open("data/record/templates_live.pickle", "wb"))
         pickle.dump(self.dict_intrinsics, open("data/record/intrinsics.pickle", "wb"))
 
+        if self.print_pkl is True:
+            print("===INTRINSICS==")
+            print(self.dict_intrinsics)
+
+            print("===FRAME-TIMESTAMPS==")
+            print(self.dict_frame_metadata)
+
+            print("===PATCH-TIMES==")
+            print(self.dict_templates_live)
+
+            print("===IMU==")
+            print(self.dict_imu)
+
     # input -> output : file_name -> imu, frame_metadata, templates_live, npy dump
     def dump_files(self):
         self.load_mp4_and_dump_npy()
@@ -170,6 +203,7 @@ if __name__ == '__main__':
     # arguments
     parser.add_argument('-f', '--file', type=str, help='name of input file')
     parser.add_argument('-I', '--imshow', dest='imshow', action='store_true', help='Hide Imshow')
+    parser.add_argument('-P', '--printpkl', dest='print_pkl', action='store_true', help='print all pickles')
 
     # parsing with error cases
     try:
@@ -187,5 +221,5 @@ if __name__ == '__main__':
 
             # run function to import csv data
             print(f'file id := {file_id}')
-            dataLoader = DataLoader(file_id, args.imshow)
+            dataLoader = DataLoader(file_id, args.imshow, args.print_pkl)
             dataLoader.dump_files()
