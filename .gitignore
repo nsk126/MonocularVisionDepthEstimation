@@ -6,3 +6,6 @@ img/*
 *.jpg
 *.png
 *.pkl
+*.idea
+*.venv
+__pycache__
