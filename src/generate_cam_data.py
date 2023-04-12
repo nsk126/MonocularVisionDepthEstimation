@@ -6,7 +6,6 @@ import cv2
 import pickle
 import glob
 
-
 # idea: generate all data in CSV and pickle format using just .mp4 and .csv data from OpenCamera Android app.
 class DataLoader:
     def __init__(self, file_name, s_img=False, print_pkl=False):
@@ -21,13 +20,13 @@ class DataLoader:
             self.s_img = s_img
             self.print_pkl = print_pkl
             self.img_data_path = 'data/record/images'
-
+        
             try:
                 self.start_time = os.path.getctime(f'data/{self.file_name}.mp4')
                 # self.start_time = 1679040345.0
             except ImportError:
                 raise Exception('No creation time found.')
-
+            
             cap = cv2.VideoCapture(f'data/{self.file_name}.mp4')
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -64,14 +63,14 @@ class DataLoader:
             if not ret:
                 break
 
+            # Resize the frame to 848 x 480 px
+            # frame = cv2.resize(frame, (848, 480))
+            
             # convert RGB img to Grayscale
             if ret:
                 gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             else:
                 break
-
-            # Resize the frame to 848 x 480 px
-            gray_frame = cv2.resize(gray_frame, (848, 480))
 
             if self.s_img is True:
                 cv2.imshow('frame', gray_frame)
@@ -120,11 +119,8 @@ class DataLoader:
         gyro_data = data[:, :-1]
         # print(gyro_data)
 
-        # transform Open camera to Realsense axis
-        gyro_data = np.matmul(gyro_data, perm)
-        # print(gyro_data)
 
-        # create a new column with timeseries of imu data
+        # create a new column with timeseries of imu data TODO: Replace this
         time_series_accel = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(accel_data))
         time_series_gyro = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(gyro_data))
 
@@ -137,30 +133,33 @@ class DataLoader:
         self.dict_imu = imu_data
 
     def create_patches(self):
-        start_time = self.start_time + 2.0
+        
+        start_time = self.start_time + 0.5
         end_time = self.start_time + 10000.0
-        patch_cords = (349, 165, 499, 315)  # TODO: make dynamic
+        
+        # patch_cords = (349+15, 165+15, 499-15, 315-15)
+        patch_cords = (
+            int(self.resolution[0]/2 - self.resolution[0] * 0.1),
+            int(self.resolution[1]/2 - self.resolution[1] * 0.15),
+            int(self.resolution[0]/2 + self.resolution[0] * 0.1),
+            int(self.resolution[1]/2 + self.resolution[1] * 0.15)
+        )
+        # print(patch_cords)
 
         patches0 = (start_time, end_time, patch_cords)
-        patches1 = (start_time + 6.0, end_time, patch_cords)
-        # patches2 = (start_time + 6.0, end_time, patch_cords)
-        # patches3 = (start_time + 8.0, end_time, patch_cords)
-        patches4 = (start_time + 10.0, end_time, patch_cords)
-        # patches5 = (start_time + 12.0, end_time, patch_cords)
-        patches6 = (start_time + 14.0, end_time, patch_cords)
-        # patches7 = (start_time + 16.0, end_time, patch_cords)
-        patches8 = (start_time + 18.0, end_time, patch_cords)
-        # patches9 = (start_time + 20.0, end_time, patch_cords)
+        patches1 = (start_time+2.0, end_time, patch_cords)
+        patches2 = (start_time+4.0, end_time, patch_cords)
+        patches3 = (start_time+6.0, end_time, patch_cords)
 
         dict_templates_live = {
-            'patches': [patches0, patches1, patches4, patches6, patches8]
+            'patches': [patches0]
         }
 
         self.dict_templates_live = dict_templates_live
 
     def load_intrinsics(self):
         D = np.array([0., 0., 0., 0.])
-        resolution = (848, 480)
+        resolution = self.resolution
         try:
             K = pickle.load(open('calibrate_imgs/intrinsics/cameraMatrix.pkl', 'rb'))
         except ImportError:

@@ -5,8 +5,8 @@ import pickle
 
 ################ FIND CHESSBOARD CORNERS - OBJECT POINTS AND IMAGE POINTS #############################
 
-chessboardSize = (8, 5)
-frameSize = (848, 480)
+chessboardSize = (8, 6)
+# frameSize = (848, 480)
 
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -26,10 +26,12 @@ images = glob.glob('calibrate_imgs/*.jpg')
 for image in images:
 
     img = cv2.imread(image)
-    img = cv2.resize(img, frameSize)  # resize img to our preferred frame size
-
+    # img = cv2.resize(img, frameSize)  # resize img to our preferred frame size
+    height, width, channels = img.shape
+    frameSize = (width, height)
+    
     cv2.imshow('img', img)
-    cv2.waitKey(300)
+    cv2.waitKey(100)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert RGB to Grayscale
 
@@ -43,7 +45,7 @@ for image in images:
     if ret is True:
         objpoints.append(objp)
         corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        imgpoints.append(corners)
+        imgpoints.append(corners2)
 
         # Draw and display the corners
         cv2.drawChessboardCorners(img, chessboardSize, corners2, ret)
