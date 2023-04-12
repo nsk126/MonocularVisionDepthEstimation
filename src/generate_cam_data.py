@@ -28,10 +28,18 @@ class DataLoader:
             except ImportError:
                 raise Exception('No creation time found.')
 
+            cap = cv2.VideoCapture(f'data/{self.file_name}.mp4')
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cap.release()
+            
+            self.resolution = (width, height)
+            print(f'Resolution := {self.resolution}')
+
     def reset_img_data(self):
 
-        # TODO: need to delete all files in the dir prior
-        files = os.listdir(self.img_data_path)
+        # TODO: Make sure it only deletes .npy files and not .gitkeep
+        files = [f for f in os.listdir(self.img_data_path) if f != '.gitkeep']
         for file in files:
             file_path = os.path.join(self.img_data_path, file)
             try:
@@ -96,16 +104,16 @@ class DataLoader:
 
     def load_csv_files(self):
 
-        # permutation matrix
-        perm = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]])
-        # perm1 = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]])
-
         # TODO: align axis of realsense imu and s23 camera imu - find axis x,y,z format of each
+
+        # permutation matrix: changing z to negative
+        perm = np.array([[0, -1.0, 0], [-1.0, 0, 0], [0, 0, -1.0]], dtype=float)
+
         data = np.genfromtxt(f'data/{self.file_name}accel.csv', delimiter=',')
         accel_data = data[:, :-1]
 
         # transform Open camera to Realsense axis
-        accel_data = np.matmul(accel_data, perm)
+        accel_data = accel_data @ perm
 
         data = np.genfromtxt(f'data/{self.file_name}gyro.csv', delimiter=',')
         # print(data)
@@ -126,7 +134,6 @@ class DataLoader:
         imu_data = {
             'accel': accel_data, 'gyro': gyro_data
         }
-
         self.dict_imu = imu_data
 
     def create_patches(self):
