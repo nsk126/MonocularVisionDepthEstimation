@@ -33,3 +33,15 @@ used is `Python 3.9.13`.
 _Note: Files need to be in `data/record` for this to work_.
 
 `python.exe .\src\plot_data.py -ap` will read accel data and print it. The program has the flags `-a`, `-g` and `-p` for accel, gyro and print each.
+
+---
+
+### Docker 
+```bash
+docker pull stereolabs/zed:3.8-runtime-cuda11.7-ubuntu22.04
+docker run --gpus all -it --privileged stereolabs/zed:<container_tag>
+docker run --gpus all -it --privileged stereolabs/zed:3.8-runtime-cuda11.7-ubuntu18.04
+```
+
+### Requirements
+Tested on Ubuntu 22.04
