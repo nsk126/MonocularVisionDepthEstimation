@@ -23,7 +23,7 @@
 1. Scan for good features to track
 2. Create multiple patches and convert into a VIO framework
 3. Write the framework for RGB instead of grayscale
-4. 
+4.  
 
 ## key notes from paper:
 - The affine tracker was initialized by tracking a 100×100 pixel patch sub-sampled to 4000 pixels. While the patch size changes dramatically during fixation, only 4000 pixels are drawn from each frame. _How is sub-sampling done?_
