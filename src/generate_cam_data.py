@@ -20,10 +20,16 @@ class DataLoader:
             self.s_img = s_img
             self.print_pkl = print_pkl
             self.img_data_path = 'data/record/images'
+            
+            # 2 temp vars: for accel and gyro ts
+            self.accel_ts = None
+            self.gyro_ts = None
         
             try:
-                self.start_time = os.path.getctime(f'data/{self.file_name}.mp4')
+                # self.start_time = os.path.getctime(f'data/{self.file_name}.mp4')
                 # self.start_time = 1679040345.0
+                self.start_time = self.cap_time_data() # testing with original frame ts : opencamera format
+                
             except ImportError:
                 raise Exception('No creation time found.')
             
@@ -69,6 +75,7 @@ class DataLoader:
             # convert RGB img to Grayscale
             if ret:
                 gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)  # testing effect of blur
             else:
                 break
 
@@ -97,16 +104,38 @@ class DataLoader:
         cv2.destroyAllWindows()
 
         meta_data = np.array(meta_data)
+        
+        # Commenting to test new time cap
+        # self.dict_frame_metadata = {
+        #     'ts': meta_data
+        # }
+        
+    def cap_time_data(self):
+        
+        # all ts in ns : need to convert to s
+        accelT = np.genfromtxt(f'data/{self.file_name}accel.csv', delimiter=',')
+        gyroT = np.genfromtxt(f'data/{self.file_name}gyro.csv', delimiter=',')
+        frameT = np.genfromtxt(f'data/{self.file_name}imu_timestamps.csv', delimiter=',')
+        
+        start_time = np.min([accelT[0][-1], gyroT[0][-1], frameT[0]])
+        
+        meta_data = frameT/1e9 # convert from ns to s
+        
         self.dict_frame_metadata = {
             'ts': meta_data
         }
+        
+        self.accel_ts = accelT[:, -1] / 1e9
+        self.gyro_ts = gyroT[:, -1] / 1e9
+                
+        return start_time / 1e9
 
     def load_csv_files(self):
 
         # TODO: align axis of realsense imu and s23 camera imu - find axis x,y,z format of each
 
         # permutation matrix: changing z to negative
-        perm = np.array([[0, -1.0, 0], [-1.0, 0, 0], [0, 0, -1.0]], dtype=float)
+        perm = np.array([[0.0, -1.0, 0], [-1.0, 0.0, 0], [0, 0, -1.0]], dtype=float)
 
         data = np.genfromtxt(f'data/{self.file_name}accel.csv', delimiter=',')
         accel_data = data[:, :-1]
@@ -117,15 +146,24 @@ class DataLoader:
         data = np.genfromtxt(f'data/{self.file_name}gyro.csv', delimiter=',')
         # print(data)
         gyro_data = data[:, :-1]
+        
+        gyro_data = gyro_data @ perm # testing switch of rows
         # print(gyro_data)
 
 
         # create a new column with timeseries of imu data TODO: Replace this
-        time_series_accel = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(accel_data))
-        time_series_gyro = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(gyro_data))
+        # time_series_accel = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(accel_data))
+        # time_series_gyro = np.linspace(self.start_time, self.dict_frame_metadata['ts'][-1], len(gyro_data))
 
-        accel_data = np.hstack((time_series_accel.reshape(-1, 1), accel_data))
-        gyro_data = np.hstack((time_series_gyro.reshape(-1, 1), gyro_data))
+        # Testing with original time series
+        time_series_accel = self.accel_ts
+        time_series_gyro = self.gyro_ts
+        # print(f'shape of a ts = {np.shape(time_series_accel)}')
+        # print(f'shape of a data = {np.shape(accel_data)}')
+        
+        # tesinng with reshape
+        accel_data = np.hstack((time_series_accel.reshape(-1,1), accel_data))
+        gyro_data = np.hstack((time_series_gyro.reshape(-1,1), gyro_data))
 
         imu_data = {
             'accel': accel_data, 'gyro': gyro_data
@@ -150,6 +188,8 @@ class DataLoader:
         patches1 = (start_time+2.0, end_time, patch_cords)
         patches2 = (start_time+4.0, end_time, patch_cords)
         patches3 = (start_time+6.0, end_time, patch_cords)
+        
+        print(patches0)
 
         dict_templates_live = {
             'patches': [patches0]
